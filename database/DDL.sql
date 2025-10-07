@@ -46,11 +46,40 @@ create table log
     src_rdns  text                                     null,
     src_loc   text                                     null,
     src_isp   text                                     null,
-    timestamp datetime(3) default utc_timestamp(3) not null on update utc_timestamp(3),
+    timestamp datetime(3) default utc_timestamp(3) not null ,
     constraint log_app_passwords_id_fk
         foreign key (pwid) references app_passwords (id)
             on delete cascade
 );
+
+CREATE DEFINER=`roundcube`@`%` `app_passwords_with_log` AS (
+	select distinct `app_passwords`.`id` AS `id`,
+			`app_passwords`.`uid` AS `uid`,
+			`app_passwords`.`password` AS `password`,
+			`app_passwords`.`created` AS `created`,
+			`app_passwords`.`comment` AS `comment`,
+			`l`.`timestamp` AS `last_used_timestamp`,
+			`l`.`src_ip` AS `last_used_src_ip`,
+			`l`.`src_rdns` AS `last_used_src_rdns`,
+			`l`.`src_loc` AS `last_used_src_loc`,
+			`l`.`src_isp` AS `last_used_src_isp`,
+			`app_passwords`.`deleted` AS `deleted` 
+		from (
+			`app_passwords` left join (
+				select  `log`.`id` AS `id`,
+					`log`.`pwid` AS `pwid`,
+					`log`.`service` AS `service`,
+					`log`.`src_ip` AS `src_ip`,
+					`log`.`src_rdns` AS `src_rdns`,
+					`log`.`src_loc` AS `src_loc`,
+					`log`.`src_isp` AS `src_isp`,
+					`log`.`timestamp` AS `timestamp` 
+				from `log` 
+				where `log`.`id` in (
+					select max(`log`.`id`) from `log` group by `log`.`pwid`) 
+				order by `log`.`id` desc) `l` 
+			on (`l`.`pwid` = `app_passwords`.`id`)) 
+	order by `app_passwords`.`created`);
 
 create definer = roundcube@`%` view app_passwords_with_log as
 (

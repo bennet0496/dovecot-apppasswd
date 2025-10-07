@@ -1,30 +1,14 @@
-# IMAP App Passwords
+# App Passwords for Dovecot
 
-![Screenshot from 2024-04-22 11-36-01](https://github.com/bennet0496/imap_apppasswd/assets/4955327/233c02d1-9d29-41e2-8c91-4aef5ec5ba9a)
+This project's purpose is to provide a configuration example for dovecot to run with app passwords (2FA). 
+It is designed to interoperate with the Roundcube Plugin [mpipks/imap_apppasswd](https://github.com/bennet0496/imap_apppasswd).
 
-Add application specific password to your dovecot IMAP environment. 
+Caveat: This repo sets up a normal SQL passdb and post-login script in Dovecot. However, It will be 
+difficult/impossible to have precise last-login tracking this way, as it is only reliably possible to 
+get Dovecot to run a post-login script for the IMAP (and POP3) service. If for example an MTA (e.g. exim) 
+is connected via SASL, these logins would not be tracked.
 
-In a world where SSO is not only convenient, but also the norm, there is a problem 
-when it comes to mandatory 2FA/MFA in conjunction with the mail protocols SMTP and 
-IMAP. While most other webservices have MFA as a second line of defense in cases
-where users lose their password attacks including but not limited to phishing, IMAP
-and SMTP lack these capabilities and would allow an adversary to snoop a user's
-emails or to even impersonate them to peers. Established mail services like Gmail
-and Outlook circumvent this with XOAUTH2 (or app passwords). While Dovecot 
-supports XOAUTH2, the problem is that the client implementation of it in Thunderbird
-(and maybe also other clients), require static OAUTH Keys that are hard coded in 
-its source code. Thunderbird shipps with keys from some large providers, enabling 
-OAUTH usage for these, but there is no way to deploy you own keys, without shipping
-a fork of Thunderbird with is not really feasible.
 
-So the next best option are application specific passwords for each client the user
-is going to use. If you don't already have an IdP/IAM and Account Console to create
-and manage these, then the next best place might be the Webmailer that hopefully
-has 2FA anyway. This is what this plugin is for. You can create App passwords, see
-where they were last used and delete them if not needed any more.
-
-However, this plugin also requires you Dovecot (and SMTP Server [eg. Exim, Postfix])
-to be set up a certain way. 
 
 ## Prepare the database
 For the database, you can use any host you'd like to hold the data. This doesn't necessarily need 
@@ -50,14 +34,7 @@ GRANT SELECT, INSERT ON `mail_auth`.`log` TO `mailserver`@`localhost`;
 And the tables from the DDL in `database/DDL.sql`. Replace the passwords and host specifiers
 appropriately.
 
-## Setup the mail server
-
-To set up the mail server, either setup Dovecot web auth from https://github.com/bennet0496/dovecot_web_auth or
-use the old Postlogin script method below, that may or may not work anymore.
-
-
-## Setup your mail server (the old way)
-<details>
+## Setup your mail server
 You will need the following to be installed on you mail server
 ```bash
 apt install dovecot-mysql geoip-database geoipupdate
@@ -120,8 +97,8 @@ password_query = password_query = SELECT uid AS username, password, id AS userdb
 Replace the `connect` line appropriately. This retrieves the username, password and password ID as
 userdb attribute to we can tie the login to a specific password in our post-login script. We
 need to pass the password to the database, as dovecot does not support the result to be multiple 
-lines. This mean we transmit the in plain text to hash in query, therefore the connection should
-be local or SSL/TLS encrypted.
+lines. This mean we transmit the password in plain text to hash in query, therefore the connection 
+should be local or SSL/TLS encrypted.
 
 #### Post-login Script (Last login tracking)
 We want to show the user when each password was last used and from where. For this we need to
@@ -176,19 +153,4 @@ script with the auth service.
 
 If you have separate authentication in you SMTP server, you'll have to set it up to use the database
 as well. And for good measure you might also want to look into firing a post-login script from there.
-</details>
 
-## Plugin Setup
-
-Install the plugin with composer
-```
-composer require mpipks/imap_apppasswd
-```
-
-and configure it using `config.inc.php`.
-
-The most important option is correctly setting up the database connection, by setting 
-the DSN and credentials. You also need to set up how the username is derived. Here it is
-important to set it up the same way Dovecot will actually match the username after canonicalization.
-Meaning that even if you allow Login with the email as username Dovecot, if in the background it just
-matches against the local part, you need to set matching against the local part here.
