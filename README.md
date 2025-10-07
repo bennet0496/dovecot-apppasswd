@@ -1,5 +1,9 @@
 # App Passwords for Dovecot
 
+> [!WARNING]
+> These scripts are more or less unmaintained. You should prefer using [Dovecot Web Auth](https://github.com/bennet0496/dovecot_web_auth)
+> instead
+
 This project's purpose is to provide a configuration example for dovecot to run with app passwords (2FA). 
 It is designed to interoperate with the Roundcube Plugin [mpipks/imap_apppasswd](https://github.com/bennet0496/imap_apppasswd).
 
